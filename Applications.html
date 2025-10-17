@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offworlders Inc. — ECS Andromeda DREAM Recruitment Terminal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #0d0d0f;
+      color: #d4f1f9;
+      font-family: 'Share Tech Mono', monospace;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    header {
+      text-align: center;
+      padding: 40px 20px;
+      border-bottom: 1px solid #2a2a33;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+
+    header.show { opacity: 1; }
+
+    header h1 { font-size: 1.8rem; color: #00ffe0; letter-spacing: 1px; text-shadow: 0 0 6px #00ffe0; display: inline-block; }
+
+    .cursor { display: inline-block; width: 10px; height: 18px; background-color: #00ffe0; margin-left: 5px; animation: blink 0.8s infinite; }
+
+    @keyframes blink { 0%,50%{opacity:1}51%,100%{opacity:0} }
+
+    header p { color: #a8bfc9; font-size: 0.9rem; }
+
+    main { max-width: 800px; margin: 40px auto; padding: 0 20px; opacity: 0; transition: opacity 1s ease-in-out; }
+    main.show { opacity: 1; }
+
+    section { border: 1px solid #1b1b22; background: #141418; border-radius: 10px; padding: 20px; margin-bottom: 30px; box-shadow: 0 0 10px rgba(0,255,224,0.05); transition: transform 0.2s ease; }
+    section:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(0,255,224,0.15); }
+
+    h2 { color: #00ffe0; margin-top:0; font-size:1.3rem; }
+    h3 { color:#a8bfc9; font-size:0.95rem; font-weight:normal; }
+    p, ul { font-size:0.9rem; line-height:1.5; color:#d4f1f9; }
+    ul { margin-top:5px; padding-left:20px; }
+
+    .apply-btn { display:inline-block; margin-top:10px; padding:10px 18px; background-color:#00ffe0; color:#0d0d0f; border:none; border-radius:6px; text-decoration:none; font-weight:bold; transition: background-color 0.2s ease; cursor:pointer; }
+    .apply-btn:hover { background-color:#00b8a6; }
+
+    footer { text-align:center; font-size:0.8rem; padding:30px 0; color:#777; border-top:1px solid #2a2a33; }
+    .divider { border-bottom:1px solid #2a2a33; margin:30px 0; }
+
+    /* Terminal intro overlay */
+    #terminal-intro {
+      position: fixed; top:0; left:0; width:100%; height:100%; background:#0d0d0f; color:#00ffe0; font-size:1rem;
+      display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; z-index:9999; overflow:hidden;
+    }
+    #terminal-text { max-width:600px; white-space:pre-wrap; text-shadow:0 0 6px #00ffe0; }
+    .fade-out { animation: fadeOut 1s forwards; }
+    @keyframes fadeOut { to{opacity:0; visibility:hidden;} }
+
+    /* Form styling */
+    #shared-apply-form { display:none; margin-top:15px; background-color:#0d0d10; border:1px solid #2a2a33; border-radius:8px; padding:15px; animation: fadeIn 0.5s ease; }
+    #shared-apply-form input, #shared-apply-form textarea { width:100%; padding:8px; margin:6px 0; background-color:#111116; border:1px solid #2a2a33; color:#d4f1f9; font-family:'Share Tech Mono',monospace; border-radius:4px; }
+    #shared-apply-form label { font-size:0.85rem; color:#00ffe0; }
+    .availability { display:grid; grid-template-columns:repeat(2,1fr); gap:5px 20px; margin-bottom:10px; }
+    .availability label { color:#a8bfc9; font-size:0.85rem; }
+    @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+    .success { color:#00ffe0; margin-top:10px; text-align:center; animation:fadeIn 0.5s ease; }
+
+  </style>
+</head>
+<body>
+  <!-- Terminal intro animation -->
+  <div id="terminal-intro">
+    <div id="terminal-text"></div>
+    <div class="cursor"></div>
+  </div>
+
+  <header>
+    <h1>OFFWORLDERS INC.</h1><div class="cursor"></div>
+    <p>RECRUITMENT TERMINAL — ECS ANDROMEDA DREAM</p>
+  </header>
+
+  <main>
+    <section data-role="Mechanic">
+      <h2>⚙️ Mechanic</h2>
+      <h3>Deck 3, Engine Bay | Technical Maintenance</h3>
+      <p><strong>Summary:</strong> Seeking a meticulous, steady-handed problem solver to maintain and repair vital ship systems under pressure.</p>
+      <p><strong>Duties:</strong></p>
+      <ul>
+        <li>Diagnose & repair mechanical systems</li>
+        <li>Maintain engine calibration</li>
+        <li>Support emergency responses</li>
+      </ul>
+      <button class="apply-btn">Apply</button>
+    </section>
+
+    <section data-role="Medic">
+      <h2>🩺 Medic</h2>
+      <h3>Deck 2, Medbay | Life Support Operations</h3>
+      <p><strong>Summary:</strong> The calm center under chaos. Ensure crew survival through skilled medical intervention.</p>
+      <p><strong>Duties:</strong></p>
+      <ul>
+        <li>Stabilize injured crew</li>
+        <li>Monitor biometrics</li>
+        <li>Coordinate emergency triage</li>
+      </ul>
+      <button class="apply-btn">Apply</button>
+    </section>
+
+    <section data-role="Plumber">
+      <h2>🔧 Plumber</h2>
+      <h3>Decks 4–5 Maintenance Corridors | Structural & Flow Systems</h3>
+      <p><strong>Summary:</strong> Handle coolant, air, and fluid systems with improvisational skill.</p>
+      <p><strong>Duties:</strong></p>
+      <ul>
+        <li>Repair leaks</li>
+        <li>Manage pressure regulators</li>
+        <li>Maintain shipwide flow integrity</li>
+      </ul>
+      <button class="apply-btn">Apply</button>
+    </section>
+
+    <section data-role="Electrician">
+      <h2>⚡ Electrician</h2>
+      <h3>Deck 6, Reactor Wing | Energy Regulation</h3>
+      <p><strong>Summary:</strong> Maintain the pulse of the ship. Keep energy flowing and systems alive.</p>
+      <p><strong>Duties:</strong></p>
+      <ul>
+        <li>Diagnose electrical faults</li>
+        <li>Reroute power</li>
+        <li>Assist during surges</li>
+      </ul>
+      <button class="apply-btn">Apply</button>
+    </section>
+
+    <section data-role="Engineer">
+      <h2>🧬 Engineer</h2>
+      <h3>Core Operations Deck | Systems Integration</h3>
+      <p><strong>Summary:</strong> Oversee and restore the ship’s integrated systems. Convert failures into functional miracles.</p>
+      <p><strong>Duties:</strong></p>
+      <ul>
+        <li>Manage multi-system repairs</li>
+        <li>Conduct diagnostics</li>
+        <li>Collaborate across departments</li>
+      </ul>
+      <button class="apply-btn">Apply</button>
+    </section>
+
+    <!-- Shared form -->
+    <form id="shared-apply-form">
+      <label>Name</label>
+      <input type="text" name="name" required>
+      <label>Age</label>
+      <input type="number" name="age" min="16" required>
+      <label>Why do you want this role?</label>
+      <textarea name="motivation" rows="3" required></textarea>
+      <label>Availability (select all that apply)</label>
+      <div class="availability">
+        <div>
+          <strong>Days:</strong><br>
+          <label><input type="checkbox" name="days" value="Mon"> Mon</label><br>
+          <label><input type="checkbox" name="days" value="Tue"> Tue</label><br>
+          <label><input type="checkbox" name="days" value="Wed"> Wed</label><br>
+          <label><input type="checkbox" name="days" value="Thu"> Thu</label><br>
+          <label><input type="checkbox" name="days" value="Fri"> Fri</label><br>
+        </div>
+        <div>
+          <strong>Times:</strong><br>
+          <label><input type="checkbox" name="times" value="Morning"> Morning</label><br>
+          <label><input type="checkbox" name="times" value="Afternoon"> Afternoon</label><br>
+          <label><input type="checkbox" name="times" value="Evening"> Evening</label><br>
+        </div>
+      </div>
+      <button class="apply-btn" type="button">Submit Application</button>
+      <p class="success"></p>
+    </form>
+
+    <div class="divider"></div>
+    <footer>
+      [ TRANSMISSION ENCRYPTED — PROPERTY OF OFFWORLDERS INC. ]<br>
+      Unauthorized applicants will be reassigned.
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script>
+    const lines = [
+      "Initializing Offworlders Inc. Recruitment Terminal...",
+      "Connecting to ECS ANDROMEDA DREAM...",
+      "Authorization Key: *****GRANTED*****",
+      "Loading Crew Opportunities...",
+      "Accessing Personnel Database...",
+      ">> Connection Established."
+    ];
+    let index=0;
+    const terminal=document.getElementById('terminal-text');
+    function typeLine(){
+      if(index<lines.length){
+        let line=lines[index]; let charIndex=0;
+        const typeInterval=setInterval(()=>{
+          terminal.textContent+=line[charIndex]; charIndex++;
+          if(charIndex===line.length){ terminal.textContent+='\n'; clearInterval(typeInterval); index++; setTimeout(typeLine,400); }
+        },40);
+      } else {
+        setTimeout(()=>{ document.getElementById('terminal-intro').classList.add('fade-out');
+          document.querySelector('header').classList.add('show'); document.querySelector('main').classList.add('show'); },1000);
+      }
+    }
+    window.onload=typeLine;
+
+    emailjs.init("ZFPLRBT_30_m2lfNe");
+
+    const applyButtons = document.querySelectorAll('section .apply-btn');
+
+    const sharedForm = document.getElementById('shared-apply-form');
+    let currentRole = '';
+
+    applyButtons.forEach(btn=>{
+      const section = btn.closest('section');
+      const role = section.getAttribute('data-role');
+      if(btn.textContent==="Apply"){
+        btn.addEventListener('click',()=>{
+          currentRole = role;
+          section.appendChild(sharedForm);
+          sharedForm.style.display = 'block';
+        });
+      }
+    });
+
+    sharedForm.querySelector('button').addEventListener('click',()=>{
+      const form = sharedForm;
+      const success = form.querySelector('.success');
+      const data = new FormData(form);
+
+      const name = data.get("name");
+      const age = data.get("age");
+      const motivation = data.get("motivation");
+      const days = [...form.querySelectorAll("input[name='days']:checked")].map(d=>d.value).join(", ");
+      const times = [...form.querySelectorAll("input[name='times']:checked")].map(t=>t.value).join(", ");
+
+      const message = `
+--- OFFWORLDERS INC. APPLICATION RECEIVED ---
+Position: ${currentRole}
+Candidate: ${name}
+Age: ${age}
+
+Motivation:
+${motivation}
+
+Availability:
+Days: ${days}
+Times: ${times}
+
+---------------------------------------------
+TRANSMISSION RECEIVED — ECS ANDROMEDA DREAM
+`;
+
+      emailjs.send("service_u7o45ku","template_i8ir70b",{ message: message, subject:`[Offworlders Inc. Application] - ${currentRole} - ${name}` })
+      .then(()=>{ success.innerHTML="TRANSMISSION RECEIVED <span class='cursor'></span>"; form.reset(); setTimeout(()=>form.style.display='none',3000); })
+      .catch(err=>{ success.textContent="TRANSMISSION ERROR. PLEASE RETRY."; console.error(err); });
+    });
+
+  </script>
+</body>
+</html>
