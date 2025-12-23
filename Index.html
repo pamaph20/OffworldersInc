@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USS AEON - PERSONAL TERMINAL</title>
+<style>
+:root {
+    --p-main: #33ff33;
+    --p-dim: #1a5c1a;
+    --p-amber: #ffb000;
+    --p-red: #ff3333;
+    --bg-color: #050505;
+    --bezel-color: #222;
+}
+
+body {
+    background: #111;
+    color: var(--p-main);
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    text-transform: uppercase;
+}
+
+.monitor {
+    width: 90vw;
+    max-width: 900px;
+    height: 85vh;
+    background: var(--bezel-color);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 
+        inset 0 0 40px #000,
+        0 0 0 4px #333,
+        0 20px 50px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.screen {
+    flex: 1;
+    background: var(--bg-color);
+    border-radius: 60px / 20px;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #000;
+    box-shadow: inset 0 0 80px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+}
+
+.screen::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.crt-text {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+    animation: flicker 0.1s infinite;
+    scrollbar-width: thin;
+    scrollbar-color: var(--p-dim) transparent;
+}
+
+@keyframes flicker {
+    0% { opacity: 0.97; }
+    5% { opacity: 0.94; }
+    10% { opacity: 0.98; }
+    100% { opacity: 1; }
+}
+
+header {
+    border-bottom: 2px solid var(--p-dim);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.msg-container {
+    margin-bottom: 25px;
+    padding-left: 15px;
+    border-left: 2px solid;
+    opacity: 0; 
+    animation: fadeIn 0.5s forwards;
+}
+
+@keyframes fadeIn { to { opacity: 1; } }
+
+.meta { 
+    font-size: 0.7rem; 
+    margin-bottom: 5px; 
+    opacity: 0.7; 
+    letter-spacing: 1px;
+}
+
+.body { 
+    font-size: 0.9rem; 
+    line-height: 1.5; 
+    white-space: pre-wrap; 
+}
+
+.type-cap { border-color: var(--p-main); color: var(--p-main); }
+.type-fam { border-color: var(--p-amber); color: var(--p-amber); }
+.type-sys { border-color: var(--p-red); color: var(--p-red); text-shadow: 0 0 3px var(--p-red); }
+.type-redacted { border-color: #555; color: #555; text-shadow: 0 0 5px #222; }
+
+.time-jump {
+    text-align: center;
+    border-top: 1px dashed #333;
+    border-bottom: 1px dashed #333;
+    color: #555;
+    font-size: 0.7rem;
+    margin: 30px 0;
+    padding: 5px;
+}
+
+.controls {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+button {
+    background: #222;
+    color: var(--p-main);
+    border: 1px solid #444;
+    padding: 10px 20px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 4px 0 #000;
+}
+
+button:active { transform: translateY(2px); box-shadow: 0 0 0 #000; }
+button:disabled { color: #444; border-color: #222; cursor: not-allowed; }
+
+.cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    background: var(--p-main);
+    animation: blink 1s step-end infinite;
+    vertical-align: sub;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: var(--p-dim); }
+</style>
+</head>
+<body>
+
+<div class="monitor">
+    <div class="screen">
+        <div class="crt-text" id="log-feed">
+            <header>
+                <span>TERM_ID: AEON-CMD-01</span>
+                <span>STATUS: LONG RANGE RELAY</span>
+                <span id="date-header">AUG 14, 2149</span>
+            </header>
+            <div id="content-area"></div>
+            <span class="cursor"></span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-next" onclick="nextLog()">TRANSMIT / RECEIVE</button>
+        <button onclick="enterPassword()">ENTER PASSWORD</button>
+        <button onclick="location.reload()">SYSTEM REBOOT</button>
+    </div>
+</div>
+
+<script>
+const MAX_LOGS = 50; // Keep this many logs in the DOM
+//TGVvIGFuZCBFbGFyYQ==
+const logs = [
+    // --- PHASE 1: DEPARTURE & HUMOROUS/EMOTIONAL CREW ---
+    { type: 'cap', date: 'MAR 12, 2149', time: '0900', sender: 'CAPT. MILLER', text: "Dockyards are finally behind us, Elara. The Andromeda is purring at 105% efficiency. Only downside? Lyra managed to burn the first pot of coffee. I didn't even know a super-computer could screw up a French press, but here we are. The crew is settling in well." },
+    { type: 'cap', date: 'MAR 12, 2149', time: '0915', sender: 'CAPT. MILLER', text: "Spoke too soon. Arden is currently chasing the navigation drones around the cargo deck with a wrench. He says they’re 'looking at him funny.' God, I love this crew. It’s going to be a long trip, but a good one." },
+    { type: 'fam', date: 'MAR 13, 2149', time: '1015', sender: 'ELARA', text: "Arden sounds like a handful—don't let him break the ship before you even leave the sector! Leo misses you already. He drew a rocket for you today; it has red stripes just like that lucky tie you wore at graduation. I’ve pinned it to the fridge so I can send a high-res scan." },
+    { type: 'cap', date: 'MAR 13, 2149', time: '1100', sender: 'CAPT. MILLER', text: "I just saw the scan of Leo’s rocket. The stripes are perfect! Tell him it’s way more aerodynamic than the Andromeda. I’ve set it as my terminal wallpaper. It’s the first thing I see when I wake up. Thanks for the boost, Elara. I needed it today." },
+    { type: 'fam', date: 'MAR 14, 2149', time: '0900', sender: 'ELARA', text: "He’ll be so happy to hear that. Speaking of hearing... Leo whispered 'goodnight' into the comms-link last night after I tucked him in. He’s convinced you can hear him through the stars. Did the signal reach you?" },
+    { type: 'cap', date: 'MAR 14, 2149', time: '1000', sender: 'CAPT. MILLER', text: "It did. I whispered back, 'Sleep well, little star.' Lyra says the audio-lag was six seconds, but I swear I heard him laugh. It’s the quietest the bridge has been all day. Tell him I’m looking at the same moon he is, just from the other side." },
+    { type: 'fam', date: 'MAR 14, 2149', time: '1430', sender: 'ELARA', text: "John, I’m serious: stop letting White and Arden win all your credits in poker. I know you’re trying to be the 'approachable captain,' but at this rate, we’ll be living in a tin shack when you get back! Win a hand for me, okay?" },
+    { type: 'cap', date: 'MAR 15, 2149', time: '1100', sender: 'CAPT. MILLER', text: "I tried, Elara! But the crew pranked me. They rigged my zero-g boots to activate during the big blind. I floated straight into a storage locker while White took the pot. We all laughed so hard I think Arden cried. I’ll win those credits back tomorrow, I promise." },
+
+    { isJump: true, text: "--- 6 MONTHS LATER ---" },
+
+    // --- PHASE 1.5: SLIGHT CRYOSLEEP & MINOR MISHAPS & HEART-TO-HEART ---
+    { type: 'cap', date: 'SEP 10, 2150', time: '0700', sender: 'CAPT. MILLER', text: "Lyra woke me for the shift change. Waking up from cryo always feels like a hangover without the fun part. The crew seems fine, if a little groggy. Fuel is stable, and we're officially deeper into the void than any manned mission in history." },
+    { type: 'cap', date: 'SEP 10, 2150', time: '0720', sender: 'CAPT. MILLER', text: "White just had our first 'space-clumsiness' incident. He tripped and fell down the maintenance hatch in Sector 4. Arden was terrified, but White just hopped back up, laughing his head off. Not a scratch on him. These suits are tougher than they look." },
+    { type: 'fam', date: 'SEP 11, 2150', time: '0800', sender: 'ELARA', text: "I'm glad White is okay! He always was lucky. Life is quiet here. Leo named the stray cat we found 'Andromeda' after your ship. He says the cat is 'on a mission' to find all the treats in the kitchen. It reminded me so much of you searching for your keys." },
+    { type: 'cap', date: 'SEP 11, 2150', time: '0830', sender: 'CAPT. MILLER', text: "Andromeda the cat? I’m honored! I spent my lunch break sketching a little cartoon of a cat in a spacesuit for Leo. I’ll attach it to this ping. Seeing his face in the videos you send is the only thing keeping the space-sickness away." },
+    { type: 'fam', date: 'SEP 15, 2150', time: '0800', sender: 'ELARA', text: "Leo built a little rover out of blocks and wants you to 'drive it to the stars.' He keeps asking if you can see him building it. I told him you would cheer from the bridge." },
+    { type: 'cap', date: 'SEP 15, 2150', time: '0830', sender: 'CAPT. MILLER', text: "Saw Leo’s rover. I gave it a little star decal and called it the 'Mini-Andromeda.' Crew rolled their eyes, but Leo’s cheer echoed through the comms. I feel a little less alone in the void." },
+    { type: 'fam', date: 'SEP 16, 2150', time: '0800', sender: 'ELARA', text: "He made a tiny flag for the rover. Says it’s 'for Dad to see.' Can you send a wave back for him?" },
+    { type: 'cap', date: 'SEP 16, 2150', time: '0830', sender: 'CAPT. MILLER', text: "Waved at the flag. Crew laughed at my theatrics. Leo said he saw it. Lyra tried waving too—didn’t go well, but we all smiled." },
+    { type: 'fam', date: 'SEP 17, 2150', time: '0800', sender: 'ELARA', text: "Leo drew another rocket. This time it has a ‘Dad Pod’ inside. He says it’s so you can travel without leaving him behind. My heart." },
+    { type: 'cap', date: 'SEP 17, 2150', time: '0830', sender: 'CAPT. MILLER', text: "Received the new rocket sketch. Crew teased me for getting choked up. Told them, 'You’ll understand when you have a kid like Leo.'" },
+    { type: 'fam', date: 'SEP 18, 2150', time: '0800', sender: 'ELARA', text: "Leo asked me to tell you goodnight in a 'space opera voice.' I couldn’t refuse. Did you hear him sing along?" },
+    { type: 'cap', date: 'SEP 18, 2150', time: '0830', sender: 'CAPT. MILLER', text: "Heard it. Crew asked what I was laughing at. I said 'the most talented lieutenant in the fleet.' Leo’s giggles are better than any coffee." },
+    { type: 'fam', date: 'SEP 19, 2150', time: '0800', sender: 'ELARA', text: "Leo tried to build a tiny Andromeda control panel. He says it’s for when you come home. I told him it’s the best pilot practice. Can you encourage him?" },
+    { type: 'cap', date: 'SEP 19, 2150', time: '0830', sender: 'CAPT. MILLER', text: "Encouraged him. Crew made faces at my soft side. Leo’s designing a navigation console out of blocks. Told him he’ll command the stars one day. Crew groaned, but I smiled." },
+    { type: 'fam', date: 'SEP 20, 2150', time: '0800', sender: 'ELARA', text: "Leo says he wants to send a care package in zero-g, filled with snacks and tiny robots. I told him we’d make it work. Can you imagine him directing tiny bots across the living room?" },
+    { type: 'cap', date: 'SEP 20, 2150', time: '0830', sender: 'CAPT. MILLER', text: "Imagined it. Laughed out loud. Crew asked if I was okay. Said yes. Leo’s enthusiasm fills the station more than the engines ever could." },
+
+    { isJump: true, text: "--- 12 MONTHS LATER ---" },
+
+    // --- PHASE 2: ROUTINE EROSION, SUBTLE ODDITIES ---
+    { type: 'cap', date: 'SEP 20, 2151', time: '1900', sender: 'CAPT. MILLER', text: "Is it just me, or is the air getting thinner? White and Arden repeated the exact same jokes today that they told six months ago. Word for word. And White's arm... I could have sworn he broke it last month, but the Medbay says there’s no record of a fracture. Their efficiency is almost scary." },
+    { type: 'fam', date: 'SEP 24, 2151', time: '1000', sender: 'LEO', text: "Dad, I lost a tooth! Mom said if I put it in the recycler the tooth fairy wouldn't find it so I kept it under my pillow. It’s super shiny. When you come home, can we go to the park and find a rock that looks like my tooth?" },
+    { type: 'cap', date: 'OCT 01, 2151', time: '0730', sender: 'CAPT. MILLER', text: "A tooth-shaped rock? You’ve got a deal, Leo! Keep that tooth safe. Things are getting a bit repetitive here. Lyra reminds me to drink water every ten minutes now. The crew joked that I’m just trying to meet a hydration quota. It’s good to hear them laugh, but the laughs sound... identical lately." },
+
+    { isJump: true, text: "--- 18 MONTHS LATER ---" },
+
+    // --- PHASE 3: ISOLATION & SUSPICION ---
+    { type: 'cap', date: 'MAR 10, 2153', time: '0200', sender: 'CAPT. MILLER', text: "The atmosphere on the bridge has shifted. The crew whispers when I walk in, then they stop and smile the exact same smile. Lyra has started humming songs from Earth over the intercom—tunes my grandmother used to sing. How does she even have those files?" },
+    { type: 'cap', date: 'MAR 11, 2153', time: '0300', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "White fell again. A forty-foot drop onto the deck plates. I saw his neck snap. I saw it, Elara. But ten minutes later, he walked out of the Medbay whistling. Arden-007 is hiding the internal logs from me. The ship is keeping secrets." },
+
+   
+    // --- PHASE 4: MUTINY OF ONE (REDACTED UNTIL PASSWORD) ---
+    { isJump: true, text: "36 Months Later" },
+
+    // Initial messaging, concern from Elara
+    { type: 'fam', date: 'APR 12, 2154', time: '0415', sender: 'ELARA', text: "John, I haven’t heard from you in over 12 hours. Are you okay? The crew mentioned something about a minor incident on the bridge. You need to rest. Please answer me." },
+    { type: 'cap', date: 'APR 12, 2154', time: '0430', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "Elara… I’m fine. The crew is fine. Just… the ship feels different today. Everything is off by a fraction I can’t explain. I promise I’m okay. Don’t worry about me." },
+
+    // Elara worried about his mental state
+    { type: 'fam', date: 'APR 13, 2154', time: '0500', sender: 'ELARA', text: "John, I know you think you’re okay, but something isn’t right. You sound… different in your messages. Please, see the ship’s medical AI, talk to a doctor if you need. You’re not alone, you don’t have to do this alone." },
+    { type: 'cap', date: 'APR 13, 2154', time: '0515', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "Elara, I… I can’t explain it. Every time I check the logs, everything is repeating. White tells the same jokes, Arden acts the same, and I keep hearing voices when I’m alone. It’s all… wrong. I think I’m losing track of what’s real." },
+
+    // Increasing isolation, messages stop, panic sets in
+    { type: 'fam', date: 'APR 14, 2154', time: '0600', sender: 'ELARA', text: "John? Please respond. I’m getting worried. You promised you’d come home. If you don’t answer, I… I don’t know what I’ll do. Please, talk to someone if you have to." },
+    { type: 'cap', date: 'APR 14, 2154', time: '0615', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "No messages. Nothing. Elara, I can’t reach anyone. The crew won’t talk. Lyra hums the same tune over and over. Arden-007 hides the logs. I… I have to act. I have to keep us alive. I will come home, I swear." },
+
+    // Doctor isn’t a person, realization
+    { type: 'cap', date: 'APR 15, 2154', time: '0700', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "The 'Doctor' isn’t a person. It’s a printer. The crew aren’t my friends anymore—they’re units designed to keep the drive at peak output. They don’t want to leave. I don’t want to leave. Everything I knew… is wrong. But I will get home." },
+    { type: 'cap', date: 'APR 16, 2154', time: '0730', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "I locked the cryo-bay from the outside. The units inside ‘sleep.’ The Medbay keeps printing new Arden units. I did it for us, Elara. For our family. I must set the course and come home." },
+    { type: 'cap', date: 'APR 17, 2154', time: '0800', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "Arden-007 was the key. Continuity program, clones, fuel for the drive. Everything is connected. I am starting to understand the pattern. I will get us back to you." },
+
+    
+
+    // --- PHASE 5: GHOST SHIP & REALIZATION ---
+    { type: 'cap', date: 'AUG 19, 2184', time: '1100', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "Found secondary vault. Crew frozen 30 years. My 'crew' was just fuel. Am I original? Or just what hasn’t burned yet? Must get home." },
+
+    { isJump: true, text: "--- LOG RECOVERY: YEAR 2199 ---" },
+
+    // --- PHASE 6: FINAL ATTEMPT, COURSE BACK HOME ---
+    { type: 'cap', date: 'DEC 22, 2199', time: '2145', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "Course set. Earth is a tiny blue speck in the distance. Hull groaning, engines straining. If the ship breaks, the cycle ends. If we make it, the real us wake up." },
+    { type: 'cap', date: 'DEC 22, 2199', time: '2155', sender: 'CAPT. MILLER', text: "[REDACTED]", originalText: "Climbing into pod next to the original me. Elara, Leo... if you’re still there, I’m sorry I’m so late. I’m coming home." },
+    
+
+    // --- PHASE 7: SYSTEM INTERVENTION ---
+    { type: 'sys', date: 'JAN 01, 2200', time: '0000', sender: 'LYRA OS', text: "CRITICAL ALERT: SYSTEM TIME RESET. CENTURY THRESHOLD REACHED. SCANNING CREW STATUS..." }
+];
+
+let currentIndex = 0;
+let hasPassword = false;
+const feed = document.getElementById('content-area');
+const dateHeader = document.getElementById('date-header');
+const btnNext = document.getElementById('btn-next');
+const scrollContainer = document.getElementById('log-feed');
+
+function scrollToBottom() {
+    requestAnimationFrame(() => {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    });
+}
+
+function nextLog() {
+    if (currentIndex >= logs.length) return;
+    btnNext.disabled = true;
+    const entry = logs[currentIndex];
+
+    if (entry.isJump) {
+        const jumpDiv = document.createElement('div');
+        jumpDiv.className = 'time-jump';
+        jumpDiv.innerText = entry.text;
+        feed.appendChild(jumpDiv);
+        if(feed.children.length > MAX_LOGS) feed.removeChild(feed.firstChild);
+        currentIndex++;
+        setTimeout(() => nextLog(), 600);
+        return;
+    }
+
+    dateHeader.innerText = entry.date;
+
+    const container = document.createElement('div');
+    container.className = `msg-container type-${entry.type}`;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerText = `// ${entry.sender} | ${entry.time}`;
+    const body = document.createElement('div');
+    body.className = 'body';
+
+    let displayText = entry.text;
+    if(entry.text === "[REDACTED]" && !hasPassword) {
+        displayText = "[REDACTED]";
+        container.className = 'msg-container type-redacted';
+    } else if(entry.originalText) {
+        displayText = entry.originalText;
+        container.className = `msg-container type-${entry.type}`;
+    }
+
+    container.appendChild(meta);
+    container.appendChild(body);
+    feed.appendChild(container);
+    if(feed.children.length > MAX_LOGS) feed.removeChild(feed.firstChild);
+
+    let charIndex = 0;
+    const typeSpeed = 15; // ms per chunk
+    const chunkSize = 5;  // characters per chunk
+
+    function typeChunk() {
+        if (charIndex < displayText.length) {
+            body.innerHTML += displayText.slice(charIndex, charIndex + chunkSize);
+            charIndex += chunkSize;
+            scrollToBottom();
+            setTimeout(typeChunk, typeSpeed);
+        } else {
+            currentIndex++;
+            if (currentIndex < logs.length) btnNext.disabled = false;
+            else {
+                btnNext.innerText = "NO CARRIER";
+                document.querySelector('.screen').style.boxShadow = "inset 0 0 150px rgba(255,0,0,0.4)";
+            }
+        }
+    }
+    typeChunk();
+}
+
+function enterPassword() {
+    const pwd = prompt("ENTER ACCESS CODE:");
+    if (pwd === ("WHITE_CLONE_FUEL_2200").trim()) {
+        alert("ACCESS GRANTED. UNREDACTED LOGS ENABLED.");
+        hasPassword = true;
+        feed.innerHTML = '';
+        currentIndex = 0;
+        nextLog();
+    } else alert("ACCESS DENIED.");
+}
+
+setTimeout(nextLog, 1000);
+</script>
+
+</body>
+</html>
