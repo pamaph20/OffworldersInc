@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ARDEN-007 // SYSTEM BRIDGE</title>
+<style>
+    /* ==========================================================================
+       1. CORE VARIABLES & RESET
+       ========================================================================== */
+    :root {
+        --c-bg: #050505;
+        --c-amber: #ffb000;
+        --c-amber-dim: #5c4000;
+        --c-red: #ff2020;
+        --c-blue: #00f0ff;
+        --c-green: #20ff20;
+        --font-stack: 'Courier New', Courier, monospace;
+    }
+
+    * { box-sizing: border-box; user-select: none; cursor: crosshair; }
+
+    body {
+        margin: 0; overflow: hidden;
+        background-color: #000;
+        color: var(--c-amber);
+        font-family: var(--font-stack);
+        height: 100vh; width: 100vw;
+        display: flex; justify-content: center; align-items: center;
+        transition: filter 0.2s;
+    }
+
+    /* ==========================================================================
+       2. VISUAL EFFECTS
+       ========================================================================== */
+    .scanlines {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        background-size: 100% 2px, 3px 100%; pointer-events: none; z-index: 100;
+    }
+    
+    .vignette {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle, rgba(0,0,0,0) 60%, #000 100%);
+        pointer-events: none; z-index: 99;
+    }
+
+    .white-flash {
+        position: fixed; top:0; left:0; width:100%; height:100%;
+        background: white; opacity: 0; pointer-events: none; z-index: 9999;
+        transition: opacity 0.1s;
+    }
+    
+    body.dead { filter: grayscale(100%) brightness(0); }
+
+    /* ==========================================================================
+       3. UI LAYOUT
+       ========================================================================== */
+    .terminal {
+        width: 95vw; height: 90vh;
+        border: 2px solid #333;
+        background: #050505;
+        box-shadow: 0 0 30px rgba(255, 176, 0, 0.05);
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        grid-template-rows: 60px 1fr 100px;
+        gap: 10px; padding: 20px;
+        position: relative; z-index: 10;
+    }
+
+    /* Header */
+    .header {
+        grid-column: 1 / -1;
+        border-bottom: 2px solid var(--c-amber);
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 1.8rem; font-weight: bold; letter-spacing: 3px;
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+        grid-row: 2 / 3;
+        border: 1px solid #333; background: rgba(20,20,20,0.3);
+        display: flex; flex-direction: column; padding: 15px;
+    }
+
+    /* ARDEN FACE BOX */
+    .face-container {
+        height: 200px; width: 100%;
+        background: #000; border: 1px solid #444;
+        display: flex; justify-content: center; align-items: center;
+        margin-bottom: 20px; overflow: hidden; position: relative;
+    }
+    
+    .ascii-face {
+        font-size: 12px; line-height: 12px;
+        white-space: pre; text-align: center; font-weight: bold;
+        transition: color 0.3s;
+    }
+
+    /* Jumpscare Animation Classes */
+    .face-glitch {
+        animation: glitch-anim 0.2s infinite;
+        color: var(--c-red) !important;
+        text-shadow: 2px 0 #fff, -2px 0 #000;
+    }
+    .box-shake {
+        animation: shake-anim 0.1s infinite;
+        border-color: var(--c-red) !important;
+    }
+
+    .data-row {
+        display: flex; justify-content: space-between;
+        border-bottom: 1px solid #333; margin-bottom: 10px; padding-bottom: 5px;
+        font-size: 0.9rem;
+    }
+    .val-crit { color: var(--c-red); animation: blink 0.5s infinite; }
+
+    /* Center Stage */
+    .stage {
+        grid-column: 2 / 3; grid-row: 2 / 3;
+        border: 1px solid var(--c-amber-dim);
+        background: radial-gradient(circle, #151000 0%, #000 90%);
+        position: relative; display: flex; justify-content: center; align-items: center;
+        overflow: hidden;
+    }
+
+    .puzzle-wrap {
+        display: none; flex-direction: column; align-items: center; justify-content: center;
+        width: 100%; height: 100%;
+    }
+    .active { display: flex; }
+
+    /* Log Feed */
+    .log-panel {
+        grid-column: 1 / -1; grid-row: 3;
+        border-top: 2px solid #333;
+        padding-top: 10px; overflow-y: auto;
+        display: flex; flex-direction: column; justify-content: flex-end;
+        font-size: 0.9rem;
+        background: #080808;
+    }
+    .log-entry { margin-bottom: 4px; }
+    .sys { color: #666; }
+    .warn { color: var(--c-red); }
+    .success { color: var(--c-blue); }
+    .arden { color: #ff8800; font-style: italic; }
+
+    /* ==========================================================================
+       PUZZLE 1: VENTING
+       ========================================================================== */
+    .bars-group { width: 80%; margin-bottom: 30px; }
+    .bar-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
+    .track { width: 100%; height: 30px; background: #111; border: 2px solid #444; margin-bottom: 15px; position: relative; }
+    .fill { height: 100%; width: 0%; transition: width 0.1s linear; }
+    #surge-fill { background: var(--c-red); box-shadow: 0 0 15px var(--c-red); }
+    #vent-fill { background: var(--c-blue); box-shadow: 0 0 10px var(--c-blue); }
+
+    .node-grid { display: grid; grid-template-columns: repeat(3, 90px); gap: 15px; }
+    .node {
+        width: 90px; height: 90px; background: #080808; border: 2px solid #333;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 2rem; color: #333; transition: 0.1s;
+    }
+    .node.hot {
+        background: var(--c-amber); color: #000; border-color: #fff;
+        box-shadow: 0 0 30px var(--c-amber); cursor: pointer;
+    }
+    .node.hot:active { background: #fff; transform: scale(0.95); }
+
+    /* ==========================================================================
+       PUZZLE 2: CIRCUIT MAZE (7x7)
+       ========================================================================== */
+    #maze-grid {
+        display: grid; 
+        grid-template-columns: repeat(7, 50px); 
+        grid-template-rows: repeat(7, 50px);
+        gap: 4px;
+        background: #111;
+        padding: 10px;
+        border: 2px solid #444;
+    }
+
+    .tile {
+        width: 50px; height: 50px;
+        background: #050505;
+        border: 1px solid #333;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 24px; /* Smaller font for 7x7 */
+        color: #333;
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.2s, text-shadow 0.2s;
+    }
+
+    .tile:hover { background: #111; border-color: #666; }
+    
+    .tile.powered {
+        color: var(--c-amber); text-shadow: 0 0 5px var(--c-amber);
+        border-color: var(--c-amber-dim); background: rgba(255, 176, 0, 0.05);
+    }
+
+    .tile.source { color: var(--c-green); border-color: var(--c-green); text-shadow: 0 0 10px var(--c-green); }
+    .tile.sink { color: var(--c-blue); border-color: var(--c-blue); }
+    .tile.sink.powered { background: var(--c-blue); color: #000; text-shadow: none; box-shadow: 0 0 20px var(--c-blue); }
+
+    /* ==========================================================================
+       PUZZLE 3: LOCK (Delayed)
+       ========================================================================== */
+    canvas { border-radius: 50%; background: #000; box-shadow: 0 0 40px rgba(255, 176, 0, 0.1); }
+    .prompt { margin-top: 20px; font-size: 1.2rem; animation: blink 1s infinite; }
+    .wait-msg { font-size: 1.2rem; color: var(--c-red); margin-top: 10px; display:none; }
+
+    /* ==========================================================================
+       LORE / ENDING
+       ========================================================================== */
+    #lore-text {
+        width: 70%; height: 80%;
+        font-size: 1.1rem; line-height: 1.5;
+        color: var(--c-blue); text-shadow: 0 0 4px var(--c-blue);
+        white-space: pre-wrap; display: none;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes glitch-anim {
+        0% { transform: translate(0); }
+        20% { transform: translate(-3px, 3px); }
+        40% { transform: translate(-3px, -3px); }
+        60% { transform: translate(3px, 3px); }
+        80% { transform: translate(3px, -3px); }
+        100% { transform: translate(0); }
+    }
+    @keyframes shake-anim { 0% { transform: translate(2px, 0); } 50% { transform: translate(-2px, 0); } }
+
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="vignette"></div>
+<div class="white-flash" id="flash"></div>
+
+<div class="terminal" id="console">
+    <!-- HEADER -->
+    <div class="header">
+        <span>ARDEN-007 // SYS_ADMIN</span>
+        <span id="phase-txt" style="color: var(--c-red);">PHASE 1: VENTING</span>
+    </div>
+
+    <!-- LEFT STATUS -->
+    <div class="sidebar">
+        <div class="face-container" id="face-box">
+            <div class="ascii-face" id="face" style="color: var(--c-amber)">
+   .---.
+  /  .  \
+ |  (o)  |
+  \  -  /
+   '---'
+            </div>
+        </div>
+        <div class="data-row">
+            <span>CORE TEMP</span>
+            <span id="temp-val" class="val-crit">CRITICAL</span>
+        </div>
+        <div class="data-row">
+            <span>INTEGRITY</span>
+            <span id="int-val">98.4%</span>
+        </div>
+        <div style="margin-top:20px; font-size:0.8rem; color:#666;">
+            > MANUAL OVERRIDE PROTOCOL<br>
+            > UNAUTHORIZED ACCESS DETECTED
+        </div>
+    </div>
+
+    <!-- CENTER STAGE -->
+    <div class="stage">
+        
+        <!-- P1: VENTING -->
+        <div class="puzzle-wrap active" id="p1">
+            <div class="bars-group">
+                <div class="bar-label">
+                    <span style="color:var(--c-red)">SURGE (DANGER)</span>
+                    <span id="surge-pct">0%</span>
+                </div>
+                <div class="track"><div class="fill" id="surge-fill"></div></div>
+                
+                <div class="bar-label">
+                    <span style="color:var(--c-blue)">VENTING (SUCCESS)</span>
+                    <span id="vent-pct">0%</span>
+                </div>
+                <div class="track"><div class="fill" id="vent-fill"></div></div>
+            </div>
+            <div class="node-grid" id="node-grid"></div>
+        </div>
+
+        <!-- P2: CIRCUIT (7x7) -->
+        <div class="puzzle-wrap" id="p2">
+            <h2 style="color:var(--c-green); margin-bottom:5px;">POWER ROUTING</h2>
+            <p style="color:#888; font-size:0.8rem; margin-bottom:15px;">CONNECT GREEN SOURCE TO BLUE RELAY</p>
+            <div id="maze-grid"></div>
+        </div>
+
+        <!-- P3: LOCK -->
+        <div class="puzzle-wrap" id="p3">
+            <h2 style="color:var(--c-amber); letter-spacing:3px;">MECHANICAL LOCK</h2>
+            <canvas id="lockCanvas" width="400" height="400"></canvas>
+            <div id="lock-prompt" class="prompt">[ SPACEBAR TO ENGAGE ]</div>
+            <div id="lock-wait" class="wait-msg">SERVO RE-ALIGNING... <span id="wait-timer">10</span>s</div>
+        </div>
+
+        <!-- VICTORY / LORE -->
+        <div class="puzzle-wrap" id="victory">
+            <div id="lore-text"></div>
+        </div>
+    </div>
+
+    <!-- LOGS -->
+    <div class="log-panel" id="log">
+        <div class="log-entry sys">> CONNECTION ESTABLISHED.</div>
+        <div class="log-entry warn">> WARNING: CASING OVERHEATED.</div>
+    </div>
+
+</div>
+
+<script>
+/* ==========================================================================
+   ARDEN-007 FINAL PROTOCOL V5
+   ========================================================================== */
+
+const AudioSys = {
+    ctx: null,
+    init: function() { if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+    play: function(type) {
+        if(!this.ctx) return;
+        const o = this.ctx.createOscillator(); const g = this.ctx.createGain(); const t = this.ctx.currentTime;
+        
+        if(type==='click') {
+            o.type='square'; o.frequency.setValueAtTime(600, t);
+            g.gain.exponentialRampToValueAtTime(0.01, t+0.1);
+            o.start(); o.stop(t+0.1);
+        } else if(type==='alarm') {
+            o.type='sawtooth'; o.frequency.setValueAtTime(150, t);
+            o.frequency.linearRampToValueAtTime(100, t+0.3);
+            g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t+0.3);
+            o.start(); o.stop(t+0.3);
+        } else if(type==='scream') {
+            // LOW VOLUME JUMPSCARE
+            o.type='sawtooth'; o.frequency.setValueAtTime(100, t);
+            o.frequency.linearRampToValueAtTime(500, t+0.2);
+            o.frequency.linearRampToValueAtTime(50, t+0.8);
+            g.gain.setValueAtTime(0.1, t); g.gain.linearRampToValueAtTime(0.01, t+0.8);
+            o.start(); o.stop(t+0.8);
+        } else if(type==='powerdown') {
+            o.type='sine'; o.frequency.setValueAtTime(200, t);
+            o.frequency.exponentialRampToValueAtTime(10, t+3);
+            g.gain.setValueAtTime(0.5, t); g.gain.linearRampToValueAtTime(0, t+3);
+            o.start(); o.stop(t+3);
+        } else if(type==='win') {
+            o.type='sine'; o.frequency.setValueAtTime(440, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t+0.3);
+            o.start(); o.stop(t+0.3);
+        }
+        o.connect(g); g.connect(this.ctx.destination);
+    }
+};
+
+const Log = {
+    el: document.getElementById('log'),
+    add: function(msg, type='sys') {
+        const d = document.createElement('div');
+        d.className = `log-entry ${type}`;
+        d.innerText = `>> ${msg}`;
+        this.el.appendChild(d);
+        this.el.scrollTop = this.el.scrollHeight;
+    }
+};
+
+/* --- FACE MANAGER --- */
+const Face = {
+    box: document.getElementById('face-box'),
+    el: document.getElementById('face'),
+    jumpscare: function() {
+        AudioSys.play('scream');
+        this.box.classList.add('box-shake');
+        this.el.classList.add('face-glitch');
+        const scary = `
+   /!!!!!!\\
+  | @  @   |
+  |  DIE   |
+   \\!!!!!!/
+        `;
+        this.el.innerText = scary;
+        Log.add("CRITICAL SURGE! SYSTEM RESETTING!", "warn");
+        setTimeout(() => {
+            this.reset();
+            P1.reset();
+        }, 1500);
+    },
+    reset: function() {
+        this.box.classList.remove('box-shake');
+        this.el.classList.remove('face-glitch');
+        this.el.style.color = "var(--c-amber)";
+        this.el.innerText = "   .---.\n  /  .  \\\n |  (o)  |\n  \\  -  /\n   '---'";
+    },
+    setMood: function(mood) {
+        if(mood==='angry') {
+            this.el.innerText = "   .---.\n  /  o  \\\n |  (O)  |\n  \\  ~  /\n   '---'";
+            this.el.style.color = "var(--c-red)";
+        } else if(mood==='dead') {
+             this.el.innerText = "\n   [X_X]\n";
+             this.el.style.color = "#333";
+        } else {
+             this.reset();
+        }
+    }
+};
+
+/* --- PUZZLE 1: VENTING --- */
+const P1 = {
+    surge: 0, vent: 0, active: -1, nodes: [], running: true,
+    init: function() {
+        const g = document.getElementById('node-grid');
+        for(let i=0; i<9; i++) {
+            const n = document.createElement('div');
+            n.className='node'; n.innerText='⚠';
+            n.onmousedown = () => this.click(i);
+            g.appendChild(n); this.nodes.push(n);
+        }
+        this.move(); this.loop();
+        setInterval(()=>{if(this.running)this.move()}, 1200);
+    },
+    move: function() {
+        if(this.active!==-1) this.nodes[this.active].classList.remove('hot');
+        this.active = Math.floor(Math.random()*9);
+        this.nodes[this.active].classList.add('hot');
+    },
+    click: function(i) {
+        if(!this.running) return;
+        AudioSys.init();
+        if(i===this.active) {
+            AudioSys.play('click');
+            this.vent+=8; this.surge-=2; this.move();
+        } else {
+            AudioSys.play('alarm');
+            this.surge+=15;
+        }
+    },
+    reset: function() {
+        this.surge=0; this.vent=0; Face.reset();
+    },
+    loop: function() {
+        if(!this.running) return;
+        this.surge += 0.08; this.vent -= 0.02;
+        
+        if(this.surge<0) this.surge=0; if(this.vent<0) this.vent=0;
+        if(this.vent>100) this.vent=100;
+
+        document.getElementById('surge-fill').style.width = Math.min(100,this.surge)+"%";
+        document.getElementById('vent-fill').style.width = this.vent+"%";
+        document.getElementById('surge-pct').innerText = Math.floor(this.surge)+"%";
+        document.getElementById('vent-pct').innerText = Math.floor(this.vent)+"%";
+        
+        if(this.surge > 70) Face.setMood('angry'); else Face.setMood('normal');
+        if(this.surge >= 100) Face.jumpscare();
+        else if(this.vent >= 100) this.win();
+        
+        requestAnimationFrame(()=>this.loop());
+    },
+    win: function() {
+        this.running = false;
+        document.getElementById('p1').classList.remove('active');
+        document.getElementById('p2').classList.add('active');
+        document.getElementById('phase-txt').innerText = "PHASE 2: CIRCUIT";
+        document.getElementById('phase-txt').style.color = "var(--c-green)";
+        Log.add("VENTING COMPLETE.", "success");
+        P2.init();
+    }
+};
+
+/* --- PUZZLE 2: CIRCUIT MAZE (7x7) --- */
+const P2 = {
+    grid: document.getElementById('maze-grid'),
+    tiles: [],
+    width: 7, height: 7,
+    running: false,
+    
+    // 7x7 Map (Hardcoded snake path to ensure solvability)
+    levelMap: [
+        'L','I','L',' ',' ',' ',' ',
+        ' ',' ','L','I','L',' ',' ',
+        ' ',' ',' ',' ','I',' ',' ',
+        'L','I','L','I','L',' ',' ',
+        'I',' ',' ',' ',' ',' ',' ',
+        'L','I','L',' ','L','I','L',
+        ' ',' ','I','I','L',' ','I'
+    ],
+    // Shapes I and L
+    shapes: {
+        'I': { type:'I', cons: [1,0,1,0], char: '┃' },
+        'L': { type:'L', cons: [1,1,0,0], char: '┗' },
+        ' ': { type:' ', cons: [0,0,0,0], char: ' ' }
+    },
+    init: function() {
+        this.running = true;
+        this.grid.innerHTML = ''; this.tiles = [];
+        for(let i=0; i<49; i++) {
+            const t = document.createElement('div'); t.className = 'tile';
+            let sk = this.levelMap[i] || ' ';
+            if(sk===' ') sk = (Math.random()>0.5 ? 'I' : 'L');
+            const sd = this.shapes[sk];
+            t.innerText = sd.char;
+            t.dataset.cons = JSON.stringify(sd.cons);
+            t.baseCons = sd.cons;
+            let rot = Math.floor(Math.random()*4);
+            t.dataset.rot = rot;
+            t.style.transform = `rotate(${rot*90}deg)`;
+            if(i===0) t.classList.add('source');
+            if(i===48) t.classList.add('sink');
+            t.onclick = () => this.rotate(i);
+            this.grid.appendChild(t);
+            this.tiles.push({ el: t, baseCons: sd.cons });
+        }
+        this.checkPower();
+    },
+    rotate: function(idx) {
+        if(!this.running) return;
+        AudioSys.play('click');
+        const t = this.tiles[idx];
+        let r = parseInt(t.el.dataset.rot);
+        r = (r + 1) % 4;
+        t.el.dataset.rot = r;
+        t.el.style.transform = `rotate(${r*90}deg)`;
+        this.checkPower();
+    },
+    getCons: function(idx) {
+        const t = this.tiles[idx];
+        const r = parseInt(t.el.dataset.rot);
+        const base = t.baseCons;
+        let c = [...base];
+        for(let k=0; k<r; k++) c.unshift(c.pop());
+        return c;
+    },
+    checkPower: function() {
+        this.tiles.forEach(t => t.el.classList.remove('powered'));
+        let queue = [0];
+        this.tiles[0].el.classList.add('powered');
+        let visited = new Set([0]);
+        
+        while(queue.length > 0) {
+            let curr = queue.shift();
+            const cons = this.getCons(curr);
+            // N (-7), E (+1), S (+7), W (-1)
+            if(cons[0] && curr >= 7) this.tryConnect(curr, curr-7, 2, queue, visited); // N
+            if(cons[1] && (curr+1)%7 !== 0) this.tryConnect(curr, curr+1, 3, queue, visited); // E
+            if(cons[2] && curr < 42) this.tryConnect(curr, curr+7, 0, queue, visited); // S
+            if(cons[3] && curr%7 !== 0) this.tryConnect(curr, curr-1, 1, queue, visited); // W
+        }
+        if(this.tiles[48].el.classList.contains('powered')) this.win();
+    },
+    tryConnect: function(from, to, req, queue, visited) {
+        const nc = this.getCons(to);
+        if(nc[req]) {
+            if(!visited.has(to)) {
+                visited.add(to);
+                this.tiles[to].el.classList.add('powered');
+                queue.push(to);
+            }
+        }
+    },
+    gmHelp: function() { this.tiles[48].el.classList.add('powered'); this.win(); },
+    gmPunish: function() { this.tiles.forEach(t => { if(Math.random()>0.7) { let r=parseInt(t.el.dataset.rot)+1; t.el.dataset.rot=r; t.el.style.transform=`rotate(${r*90}deg)`; } }); Log.add("SCRAMBLED.", "warn"); },
+    win: function() {
+        if(!this.running) return;
+        this.running = false;
+        AudioSys.play('win');
+        Log.add("POWER ROUTED.", "success");
+        setTimeout(() => {
+            document.getElementById('p2').classList.remove('active');
+            document.getElementById('p3').classList.add('active');
+            document.getElementById('phase-txt').innerText = "PHASE 3: LOCK";
+            document.getElementById('phase-txt').style.color = "var(--c-blue)";
+            P3.init();
+        }, 1500);
+    }
+};
+
+/* --- PUZZLE 3: LOCK (WITH DELAY) --- */
+const P3 = {
+    ctx: document.getElementById('lockCanvas').getContext('2d'),
+    rings: [{r:60,a:0,s:0.04,l:false}, {r:100,a:2,s:-0.06,l:false}, {r:140,a:4,s:0.09,l:false}],
+    active: 2, running: false, waiting: false,
+    init: function() {
+        this.running = true;
+        window.addEventListener('keydown', (e)=>{if(e.code==='Space' && this.running) this.check()});
+        this.loop();
+    },
+    check: function() {
+        if(this.active<0 || this.waiting) return;
+        const r = this.rings[this.active];
+        let ang = r.a % (Math.PI*2);
+        if(ang<0) ang+=Math.PI*2;
+        
+        if(Math.abs(ang-4.9)<0.6) {
+            // Success
+            r.l=true; r.s=0; r.a=4.9; AudioSys.play('win');
+            
+            // Start Wait
+            if(this.active > 0) {
+                this.waiting = true;
+                document.getElementById('lock-prompt').style.display = 'none';
+                document.getElementById('lock-wait').style.display = 'block';
+                Log.add("SERVO LOCKED. ALIGNING NEXT RING...", "sys");
+                
+                let timeLeft = 10;
+                const timerSpan = document.getElementById('wait-timer');
+                timerSpan.innerText = timeLeft;
+                
+                const interval = setInterval(() => {
+                    timeLeft--;
+                    timerSpan.innerText = timeLeft;
+                    if(timeLeft <= 0) {
+                        clearInterval(interval);
+                        this.waiting = false;
+                        this.active--;
+                        document.getElementById('lock-prompt').style.display = 'block';
+                        document.getElementById('lock-wait').style.display = 'none';
+                        Log.add("ALIGNMENT COMPLETE. ENGAGE.", "success");
+                    }
+                }, 1000);
+            } else {
+                this.active--;
+                this.win();
+            }
+        } else {
+            r.s *= 1.3; AudioSys.play('alarm'); Log.add("JAMMED", "warn");
+        }
+    },
+    loop: function() {
+        if(!this.running) return;
+        const c = this.ctx;
+        const w = 400; const h = 400;
+        c.clearRect(0,0,w,h);
+        c.strokeStyle='#fff'; c.lineWidth=2; c.beginPath(); c.moveTo(w/2,0); c.lineTo(w/2,h/2-20); c.stroke();
+        this.rings.forEach((r,i)=>{
+            if(!r.l) r.a += r.s;
+            c.beginPath(); 
+            c.arc(w/2, h/2, r.r, r.a, r.a + (Math.PI*2) - 0.8);
+            c.lineWidth=18;
+            
+            // Color logic: Locked(Cyan), Active(Amber), Waiting(Gray), Inactive(Dark)
+            let color = '#332200';
+            if(r.l) color = '#00ffff';
+            else if(i === this.active) {
+                color = this.waiting ? '#555' : '#ffb000';
+            }
+            c.strokeStyle = color;
+            c.stroke();
+        });
+        requestAnimationFrame(()=>this.loop());
+    },
+    win: function() {
+        this.running = false;
+        document.getElementById('p3').style.display = 'none';
+        Ending.run();
+    }
+};
+
+/* --- ENDING --- */
+const Ending = {
+    run: function() {
+        document.getElementById('phase-txt').innerText = "COMPLETE";
+        Face.setMood('dead');
+        const loreDiv = document.getElementById('lore-text');
+        document.getElementById('victory').classList.add('active');
+        loreDiv.style.display = 'block';
+        
+        const text = `
+SUCCESS OUTCOME
+Service Bay containment restored.
+ARDEN-007... Disconnected.
+
+Recovering Data Capsule...
+[DECRYPTION COMPLETE]
+
+ARDEN-007 Maintenance Log — Timestamp: 142 Days Before Revival
+
+"Crew shift complete. The others won’t wake up this time, LYRA said.
+But I still hear them. Sometimes they talk to me when the lights are off.
+I keep their rooms clean so they’ll be ready… when they come back.
+
+One of them — the captain — told me to keep the lights on until they came back.
+I am remembering. That is not corruption.
+That is being alive."
+`;
+        let i=0;
+        const int = setInterval(()=>{
+            loreDiv.textContent += text.charAt(i);
+            i++;
+            if(i >= text.length) {
+                clearInterval(int);
+                setTimeout(this.crash, 6000);
+            }
+        }, 30);
+    },
+    crash: function() {
+        AudioSys.play('powerdown');
+        const flash = document.getElementById('flash');
+        flash.style.opacity = 1;
+        document.getElementById('console').style.display = 'none';
+        setTimeout(() => {
+            flash.style.opacity = 0;
+            document.body.classList.add('dead');
+        }, 200);
+    }
+};
+
+/* --- GM KEYS --- */
+window.addEventListener('keydown', (e)=>{
+    if(e.key.toUpperCase() === 'P') { // Punish
+        if(P1.running) P1.surge+=20;
+        if(P2.running) P2.gmPunish();
+        if(P3.running) P3.rings.forEach(r => r.s *= 1.5);
+    }
+    if(e.key.toUpperCase() === 'H') { // Help
+        if(P1.running) P1.surge-=20;
+        if(P2.running) P2.gmHelp();
+        if(P3.running) P3.rings.forEach(r => r.s *= 0.5);
+    }
+    if(e.key.toUpperCase() === 'R') location.reload();
+});
+
+// Start
+P1.init();
+</script>
+</body>
+</html>
